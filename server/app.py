@@ -1,10 +1,12 @@
 import socketio
 import eventlet
 import threading
+import Queue
 
+dreamcastQ = Queue.Queue()
 sio = socketio.Server()
 app = socketio.WSGIApp(sio, static_files={
-    '/': {'content_type': 'text/html', 'filename': '../client/index.html'}
+    '/index.html': {'content_type': 'text/html', 'filename': '../client/index.html'}
 })
 # TODO: dreamcast has one state. Make all clients participants in a room, and
 #       send all updates to everyone once their state was "synced"
@@ -35,17 +37,33 @@ def dreamcast_rpc_thread():
     prev_time = time.time()
     update_count = 0
     while True:
+        try:
+            message = dreamcastQ.get_nowait()
+        except Queue.Empty:
+            eventlet.sleep(0.01)
+            continue
+
         if last_sid:
             update_count += 1
-            sio.emit('message_update', ["Update #{}".format(update_count)], last_sid)
+            sio.emit('message_update', ["Update #{}, {}".format(update_count, message)], last_sid)
+
         prev_time = time.time()
-        eventlet.sleep(1)
+
+def dreamcast_simulator():
+    while True:
+        dreamcastQ.put_nowait("Hello World")
+        import time
+        time.sleep(1)
 
 def main():
-    server = threading.Thread(target=run_server)
     # Set the server to Daemon mode so that it could be terminated with CTRL+C
+    server = threading.Thread(target=run_server)
     server.daemon = True
     server.start()
+    
+    dreamcast_sim = threading.Thread(target=dreamcast_simulator)
+    dreamcast_sim.daemon = True
+    dreamcast_sim.start()
 
     while True:
         import time
