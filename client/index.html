@@ -1,11 +1,43 @@
 <html>
 <head>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.3.0/socket.io.dev.js"></script>
-  <script>
-    const socket = io('http://localhost:8000');
-    socket.on('connect', (data) => {
-        console.log("connection established");
-    });
-  </script>
 </head>
+<body>
+  <div id="container" style="height:200px; overflow-y: scroll; border:2px #aaa solid;">
+    <ol id="connections" style="margin: 0 0 0 0;">
+    </ol>
+  </div>
+  <!-- App Logic -->
+  <script>
+    const socket = io('http://localhost:8000')
+
+    function updateConnections(new_connections) {
+      let container = document.getElementById("container")
+      let connectionList = document.getElementById("connections")
+      let shouldScroll = Math.abs(container.scrollHeight - (container.scrollTop + container.clientHeight)) < 5
+
+      new_connections.forEach((connection) => {
+        let connectionItem = document.createElement("li")
+        connectionItem.appendChild(document.createTextNode(connection))
+        connectionList.appendChild(connectionItem)
+      })
+
+      if (shouldScroll) {
+        container.scrollTo(0, container.scrollHeight - container.clientHeight)
+      }
+    }
+
+    socket.on('connect', (data) => {
+      console.log("connection established")
+    })
+
+    socket.on('message_sync', (data) => {
+      document.getElementById("connections").innerHTML = ""
+      updateConnections(data)
+    })
+
+    socket.on('message_update', updateConnections)
+
+  </script>
+</body>
 </html>
