@@ -4,22 +4,43 @@
 </head>
 <body>
   <div id="container" style="height:200px; overflow-y: scroll; border:2px #aaa solid;">
-    <ol id="connections" style="margin: 0 0 0 0;">
-    </ol>
+    <table id="connections" style="width:200px">
+    </table>
   </div>
   <!-- App Logic -->
   <script>
+    state = {
+      connections: {
+        current: [],
+        history: []
+      }
+    }
+
     const socket = io('http://localhost:8000')
 
-    function updateConnections(new_connections) {
+    function addConnections(new_connections) {
       let container = document.getElementById("container")
       let connectionList = document.getElementById("connections")
       let shouldScroll = Math.abs(container.scrollHeight - (container.scrollTop + container.clientHeight)) < 5
 
       new_connections.forEach((connection) => {
-        let connectionItem = document.createElement("li")
-        connectionItem.appendChild(document.createTextNode(connection))
-        connectionList.appendChild(connectionItem)
+        let connectionRow = document.createElement("tr")
+        let connectionColSrcIP = document.createElement("td")
+        let connectionColSrcPort = document.createElement("td")
+        let connectionColDestIP = document.createElement("td")
+        let connectionColDestPort = document.createElement("td")
+
+        connectionColSrcIP.appendChild(document.createTextNode(connection.src_ip))
+        connectionColSrcPort.appendChild(document.createTextNode(connection.src_port))
+        connectionColDestIP.appendChild(document.createTextNode(connection.dest_ip))
+        connectionColDestPort.appendChild(document.createTextNode(connection.dest_port))
+
+        connectionRow.appendChild(connectionColSrcIP)
+        connectionRow.appendChild(connectionColSrcPort)
+        connectionRow.appendChild(connectionColDestIP)
+        connectionRow.appendChild(connectionColDestPort)
+
+        connectionList.appendChild(connectionRow)
       })
 
       if (shouldScroll) {
@@ -31,12 +52,15 @@
       console.log("connection established")
     })
 
-    socket.on('message_sync', (data) => {
+    socket.on('sync_state', (data) => {
+      state = data
       document.getElementById("connections").innerHTML = ""
-      updateConnections(data)
+      addConnections(state.connections.current)
     })
 
-    socket.on('message_update', updateConnections)
+    socket.on('new_connection', (data) => {
+      addConnections([data])
+    })
 
   </script>
 </body>

@@ -3,20 +3,25 @@ import eventlet
 import threading
 import Queue
 
+ALL_ROOM = "ALL"
+
 dreamcastQ = Queue.Queue()
+current_state = {
+    "connections": {
+        "current": [],
+        "history": []
+    }
+}
 sio = socketio.Server()
 app = socketio.WSGIApp(sio, static_files={
     '/index.html': {'content_type': 'text/html', 'filename': '../client/index.html'}
 })
-# TODO: dreamcast has one state. Make all clients participants in a room, and
-#       send all updates to everyone once their state was "synced"
-last_sid = None
 
 @sio.event
 def connect(sid, environ):
-    global last_sid
-    sio.emit('message_sync', ["abc", "cde"], sid)
-    last_sid = sid
+    print 'Connected:', sid
+    sio.emit('sync_state', current_state, sid)
+    sio.enter_room(sid, ALL_ROOM)
 
 @sio.event
 def my_message(sid, data):
@@ -24,7 +29,8 @@ def my_message(sid, data):
 
 @sio.event
 def disconnect(sid):
-    print('disconnect ', sid)
+    sio.leave_room(sid, 'all')
+    print 'Disconnected: ', sid
 
 def run_server():
     # Spawn an dreamcast middle-man thread. This is required since updates need
@@ -43,9 +49,15 @@ def dreamcast_rpc_thread():
             eventlet.sleep(0.01)
             continue
 
-        if last_sid:
-            update_count += 1
-            sio.emit('message_update', ["Update #{}, {}".format(update_count, message)], last_sid)
+        update_count += 1
+        fake_connection = {
+            "src_ip": "192.168.1.100",
+            "src_port": update_count,
+            "dest_ip": "192.168.1.101",
+            "dest_port": update_count
+        }
+        current_state["connections"]["current"].append(fake_connection)
+        sio.emit('new_connection', fake_connection, room=ALL_ROOM)
 
         prev_time = time.time()
 
