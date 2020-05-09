@@ -12,7 +12,7 @@ current_state = {
         "history": []
     }
 }
-sio = socketio.Server()
+sio = socketio.Server(cors_allowed_origins='*')
 app = socketio.WSGIApp(sio, static_files={
     '/index.html': {'content_type': 'text/html', 'filename': '../client/index.html'}
 })
@@ -65,7 +65,7 @@ def dreamcast_simulator():
     while True:
         dreamcastQ.put_nowait("Hello World")
         import time
-        time.sleep(1)
+        time.sleep(0.2)
 
 def main():
     # Set the server to Daemon mode so that it could be terminated with CTRL+C
